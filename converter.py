@@ -325,28 +325,31 @@ if process_button and uploaded_files and conversion:
 
     results = []
 
-    for up in uploaded_files:
-        name = up.name
-        data = up.read()
+   for up in uploaded_files:
+    name = up.name
+    data = up.read()
 
-        if conversion == "pdf_to_docx":
-            out = pdf_to_docx(data)
-            filename = name.replace(".pdf", ".docx")
+    filename = None
+    out = None
 
-        elif conversion == "pdf_to_pptx":
-            out = pdf_to_pptx(data)
-            filename = name.replace(".pdf", ".pptx")
+    if conversion == "pdf_to_docx":
+        out = pdf_to_docx(data)
+        filename = name.replace(".pdf", ".docx")
 
-        elif conversion == "docx_to_pdf":
-            out = docx_to_pdf(data)
-            filename = name.replace(".docx", ".pdf")
+    elif conversion == "pdf_to_pptx":
+        out = pdf_to_pptx(data)
+        filename = name.replace(".pdf", ".pptx")
 
-        elif conversion == "pptx_to_pdf":
-            out = pptx_to_pdf(data)
-            filename = name.replace(".pptx", ".pdf")
+    elif conversion == "docx_to_pdf":
+        out = docx_to_pdf(data)
+        filename = name.replace(".docx", ".pdf")
 
+    elif conversion == "pptx_to_pdf":
+        out = pptx_to_pdf(data)
+        filename = name.replace(".pptx", ".pdf")
+
+    if filename and out:
         results.append((filename, out.getvalue()))
-
     # SINGLE FILE DOWNLOAD
     if len(results) == 1:
 
