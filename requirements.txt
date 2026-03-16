@@ -1,0 +1,7 @@
+streamlit
+pdf2image
+pdfplumber
+python-docx
+python-pptx
+pillow
+reportlab
