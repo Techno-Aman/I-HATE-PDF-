@@ -320,9 +320,6 @@ st.markdown('</div>', unsafe_allow_html=True)
 # warning if card not selected
 if process_button and not conversion:
     st.warning("Please select a conversion type first.")
-if not conversion:
-    st.warning("Please select a conversion type first.")
-    st.stop()
 if process_button and uploaded_files and conversion:
 
     results = []
@@ -334,19 +331,19 @@ if process_button and uploaded_files and conversion:
         filename = None
         out = None
 
-        if conversion == "pdf_to_docx":
+        if conversion == "PDF TO WORD":
             out = pdf_to_docx(data)
             filename = name.replace(".pdf", ".docx")
 
-        elif conversion == "pdf_to_pptx":
+        elif conversion == "PDF TO PPT":
             out = pdf_to_pptx(data)
             filename = name.replace(".pdf", ".pptx")
 
-        elif conversion == "docx_to_pdf":
+        elif conversion == "WORD TO PDF":
             out = docx_to_pdf(data)
             filename = name.replace(".docx", ".pdf")
 
-        elif conversion == "pptx_to_pdf":
+        elif conversion == "PPT TO PDF":
             out = pptx_to_pdf(data)
             filename = name.replace(".pptx", ".pdf")
 
