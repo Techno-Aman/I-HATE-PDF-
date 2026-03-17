@@ -92,18 +92,8 @@ with col1:
         st.session_state.conversion_type = "PDF TO WORD"
 
 with col2:
-    if st.button("📊 PDF → PPT", use_container_width=True):
-        st.session_state.conversion_type = "PDF TO PPT"
-
-col3, col4 = st.columns(2)
-
-with col3:
-    if st.button("📝 Word → PDF", use_container_width=True):
+     if st.button("📝 Word → PDF", use_container_width=True):
         st.session_state.conversion_type = "WORD TO PDF"
-
-with col4:
-    if st.button("📽 PPT → PDF", use_container_width=True):
-        st.session_state.conversion_type = "PPT TO PDF"
         
 if st.session_state.conversion_type:
     col1, col2, col3 = st.columns([1,2,1])
@@ -111,31 +101,6 @@ if st.session_state.conversion_type:
     with col2:
         st.info(f"Selected conversion: {st.session_state.conversion_type}")
 
-def pdf_to_images(pdf_bytes: bytes, dpi=150) -> List[Image.Image]:
-    """Convert PDF bytes to list of PIL Images using pdf2image.
-    Requires poppler to be installed on the system (poppler-utils).
-    """
-    images = convert_from_bytes(pdf_bytes, dpi=dpi)
-    return images
-
-
-def pdf_to_pptx(pdf_bytes: bytes) -> BytesIO:
-    """Create a PPTX where each slide is one page image from the PDF."""
-    images = pdf_to_images(pdf_bytes, dpi=150)
-    prs = Presentation()
-    blank_slide_layout = prs.slide_layouts[6]  # blank
-
-    for img in images:
-        slide = prs.slides.add_slide(blank_slide_layout)
-        img_byte_arr = BytesIO()
-        img.save(img_byte_arr, format='PNG')
-        img_byte_arr.seek(0)
-        pic = slide.shapes.add_picture(img_byte_arr, Inches(0), Inches(0), width=prs.slide_width)
-
-    out = BytesIO()
-    prs.save(out)
-    out.seek(0)
-    return out
 
 
 def pdf_to_docx(pdf_bytes: bytes) -> BytesIO:
@@ -210,88 +175,6 @@ def docx_to_pdf(docx_bytes: bytes) -> BytesIO:
     return out
 
 
-def pptx_to_docx(pptx_bytes: bytes) -> BytesIO:
-    """Extract slide text and images into a Word document."""
-    prs = Presentation(BytesIO(pptx_bytes))
-    doc = Document()
-    for i, slide in enumerate(prs.slides):
-        doc.add_heading(f"Slide {i+1}", level=2)
-        for shape in slide.shapes:
-            if hasattr(shape, 'text') and shape.text.strip():
-                doc.add_paragraph(shape.text)
-            if shape.shape_type == 13:  # picture
-                try:
-                    image = shape.image
-                    img_bytes = image.blob
-                    doc.add_picture(BytesIO(img_bytes), width=Inches(4))
-                except Exception:
-                    pass
-    out = BytesIO()
-    doc.save(out)
-    out.seek(0)
-    return out
-
-
-def docx_to_pptx(docx_bytes: bytes) -> BytesIO:
-    """Create a PPTX where each paragraph becomes a slide (simple)."""
-    document = Document(BytesIO(docx_bytes))
-    prs = Presentation()
-    blank = prs.slide_layouts[6]
-    for para in document.paragraphs:
-        text = para.text.strip()
-        if not text:
-            continue
-        slide = prs.slides.add_slide(blank)
-        left = Inches(0.5)
-        top = Inches(0.5)
-        width = prs.slide_width - Inches(1)
-        height = prs.slide_height - Inches(1)
-        txBox = slide.shapes.add_textbox(left, top, width, height)
-        tf = txBox.text_frame
-        tf.text = text
-    out = BytesIO()
-    prs.save(out)
-    out.seek(0)
-    return out
-
-
-def pptx_to_pdf(pptx_bytes: bytes) -> BytesIO:
-    """Create a simple PDF from pptx by placing slide texts and images on pages. Best-effort."""
-    prs = Presentation(BytesIO(pptx_bytes))
-    out = BytesIO()
-    c = canvas.Canvas(out, pagesize=letter)
-    width, height = letter
-    margin = 40
-    for slide in prs.slides:
-        y = height - margin
-        for shape in slide.shapes:
-            if hasattr(shape, 'text') and shape.text.strip():
-                lines = shape.text.split('\n')
-                for line in lines:
-                    c.drawString(margin, y, line)
-                    y -= 12
-                    if y < margin:
-                        c.showPage()
-                        y = height - margin
-            if shape.shape_type == 13:  # picture
-                try:
-                    image = shape.image
-                    img = Image.open(BytesIO(image.blob))
-                    aspect = img.width / img.height
-                    w = width - 2 * margin
-                    h = w / aspect
-                    c.drawImage(ImageReader(img), margin, y - h, width=w, height=h)
-                    y -= (h + 10)
-                    if y < margin:
-                        c.showPage()
-                        y = height - margin
-                except Exception:
-                    pass
-        c.showPage()
-    c.save()
-    out.seek(0)
-    return out
-
 # ------------------------------
 # Streamlit UI
 # ------------------------------
@@ -335,17 +218,9 @@ if process_button and uploaded_files and conversion:
             out = pdf_to_docx(data)
             filename = name.replace(".pdf", ".docx")
 
-        elif conversion == "PDF TO PPT":
-            out = pdf_to_pptx(data)
-            filename = name.replace(".pdf", ".pptx")
-
         elif conversion == "WORD TO PDF":
             out = docx_to_pdf(data)
             filename = name.replace(".docx", ".pdf")
-
-        elif conversion == "PPT TO PDF":
-            out = pptx_to_pdf(data)
-            filename = name.replace(".pptx", ".pdf")
 
         if filename and out:
             results.append((filename, out.getvalue()))
