@@ -2,9 +2,3 @@ streamlit
 pdf2docx
 python-docx
 PyMuPDF
-docx2pdf
-pdfplumber
-pdf2image
-pillow
-reportlab
-python-pptx
