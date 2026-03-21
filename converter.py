@@ -1,26 +1,14 @@
-
+import subprocess
 import streamlit as st
+from pdf2docx import Converter
 from io import BytesIO
 import zipfile
 import tempfile
 import os
-from typing import List
-
-# conversion libraries
-from pdf2image import convert_from_bytes
-import pdfplumber
-from docx import Document
-from pptx import Presentation
-from pptx.util import Inches
-from PIL import Image
-from reportlab.lib.pagesizes import letter
-from reportlab.pdfgen import canvas
-from reportlab.lib.utils import ImageReader
 
 # ------------------------------
 # Helper conversion functions
 # ------------------------------
-import streamlit as st
 
 st.set_page_config(page_title="I💔PDF", layout="wide")
 
@@ -104,93 +92,97 @@ if st.session_state.conversion_type:
 
 
 def pdf_to_docx(pdf_bytes: bytes) -> BytesIO:
-    """Extract text (and some images) from PDF into a docx file."""
-    doc = Document()
-    with pdfplumber.open(BytesIO(pdf_bytes)) as pdf:
-        for page in pdf.pages:
-            text = page.extract_text()
-            if text:
-                for para in text.split('\n'):
-                    doc.add_paragraph(para)
-            # try images on page
-            try:
-                images = page.images
-                for i, img in enumerate(images):
-                    # pdfplumber gives bbox; crop the page image
-                    cropped = page.crop((img['x0'], img['top'], img['x1'], img['bottom'])).to_image(resolution=150)
-                    im = cropped.original
-                    img_byte_arr = BytesIO()
-                    im.save(img_byte_arr, format='PNG')
-                    img_byte_arr.seek(0)
-                    doc.add_picture(img_byte_arr, width=Inches(4))
-            except Exception:
-                pass
-    out = BytesIO()
-    doc.save(out)
-    out.seek(0)
-    return out
+    # Create temp PDF file
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_pdf:
+        temp_pdf.write(pdf_bytes)
+        pdf_path = temp_pdf.name
+
+    # Output DOCX path
+    docx_path = pdf_path.replace(".pdf", ".docx")
+
+    try:
+        # Convert PDF → DOCX
+        cv = Converter(pdf_path)
+        cv.convert(docx_path, start=0, end=20)
+        cv.close()
+
+        # Read result
+        output = BytesIO()
+        with open(docx_path, "rb") as f:
+            output.write(f.read())
+
+        output.seek(0)
+        return output
+
+    finally:
+        # Cleanup (VERY IMPORTANT for deployment)
+        if os.path.exists(pdf_path):
+            os.remove(pdf_path)
+        if os.path.exists(docx_path):
+            os.remove(docx_path)
 
 
 def docx_to_pdf(docx_bytes: bytes) -> BytesIO:
-    """Create a simple PDF from docx text. This is a best-effort layout (no exact pagination).
-    For high-fidelity conversion install LibreOffice and use it instead (instructions in README).
-    """
-    doc = Document(BytesIO(docx_bytes))
-    out = BytesIO()
-    c = canvas.Canvas(out, pagesize=letter)
-    width, height = letter
-    margin = 50
-    y = height - margin
-    line_height = 12
-    for para in doc.paragraphs:
-        text = para.text
-        if not text.strip():
-            y -= line_height
-            if y < margin:
-                c.showPage()
-                y = height - margin
-            continue
-        # simple wrap
-        words = text.split()
-        line = ''
-        for w in words:
-            trial = (line + ' ' + w).strip()
-            if c.stringWidth(trial) > (width - 2 * margin):
-                c.drawString(margin, y, line)
-                y -= line_height
-                line = w
-                if y < margin:
-                    c.showPage()
-                    y = height - margin
-            else:
-                line = trial
-        if line:
-            c.drawString(margin, y, line)
-            y -= line_height
-            if y < margin:
-                c.showPage()
-                y = height - margin
-    c.save()
-    out.seek(0)
-    return out
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as temp_docx:
+        temp_docx.write(docx_bytes)
+        docx_path = temp_docx.name
 
+    output_dir = tempfile.gettempdir()
+
+    try:
+        result = subprocess.run(
+                [
+                    "C:\Program Files\LibreOffice\program\soffice.exe",
+                    "--headless",
+                    "--convert-to", "pdf",
+                    "--outdir", output_dir,
+                    docx_path
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE
+    )
+
+        pdf_path = docx_path.replace(".docx", ".pdf")
+
+        # Check if conversion failed
+        if not os.path.exists(pdf_path):
+            raise Exception(result.stderr.decode())
+
+        output = BytesIO()
+        with open(pdf_path, "rb") as f:
+            output.write(f.read())
+
+        output.seek(0)
+        return output
+
+    finally:
+        if os.path.exists(docx_path):
+            os.remove(docx_path)
+        if os.path.exists(docx_path.replace(".docx", ".pdf")):
+            os.remove(docx_path.replace(".docx", ".pdf"))
 
 # ------------------------------
 # Streamlit UI
 # ------------------------------
 
 st.markdown("<br><br>", unsafe_allow_html=True)
-
+conversion = st.session_state.conversion_type
 colA, colB, colC = st.columns([1,2,1])
 
 with colB:
+    if conversion == "PDF TO WORD":
+        allowed_types = ["pdf"]
+    elif conversion == "WORD TO PDF":
+        allowed_types = ["docx"]
+    else:
+        allowed_types = ["pdf", "docx"]  # default before selection
+
     uploaded_files = st.file_uploader(
         "Upload your files",
         accept_multiple_files=True,
-        type=["pdf","docx","pptx"]
+        type=allowed_types
     )
 
-conversion = st.session_state.conversion_type
 
 st.markdown('<div class="convert">', unsafe_allow_html=True)
 

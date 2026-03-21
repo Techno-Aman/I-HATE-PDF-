@@ -1,7 +1,10 @@
 streamlit
-pdf2image
-pdfplumber
+pdf2docx
 python-docx
-python-pptx
+PyMuPDF
+docx2pdf
+pdfplumber
+pdf2image
 pillow
 reportlab
+python-pptx
