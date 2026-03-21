@@ -132,7 +132,7 @@ def docx_to_pdf(docx_bytes: bytes) -> BytesIO:
     try:
         result = subprocess.run(
                 [
-                    "C:\Program Files\LibreOffice\program\soffice.exe",
+                    r"C:\Program Files\LibreOffice\program\soffice.exe",
                     "--headless",
                     "--convert-to", "pdf",
                     "--outdir", output_dir,
